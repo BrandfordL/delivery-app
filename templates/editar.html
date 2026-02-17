@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Editar Pedido</title>
+</head>
+<body>
+
+    <h1>Editar Pedido</h1>
+
+    <form method="POST" action="/actualizar/{{ pedido.id }}">
+        <input type="text" name="cliente" value="{{ pedido.cliente }}" required>
+        <input type="text" name="direccion" value="{{ pedido.direccion }}" required>
+        <button type="submit">Actualizar</button>
+    </form>
+
+</body>
+</html>
