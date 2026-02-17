@@ -17,17 +17,36 @@
 
     <ul>
         {% for pedido in pedidos %}
-        <li>
-            ID: {{ pedido.id }} |
-            Cliente: {{ pedido.cliente }} |
-            Dirección: {{ pedido.direccion }} |
-            Teléfono: {{ pedido.telefono }} |
-            Estado: {{ pedido.estado }} |
-            Fecha: {{ pedido.fecha_creacion }} |
-            ❌ <a href="/eliminar/{{ pedido.id }}">Eliminar</a>
-            ✏️ <a href="/editar/{{ pedido.id }}">Editar</a>
-        </li>
-    {% endfor %}
+    <li>
+        ID: {{ pedido.id }} |
+        Cliente: {{ pedido.cliente }} |
+        Dirección: {{ pedido.direccion }} |
+        Teléfono: {{ pedido.telefono }} |
+
+        {% if pedido.estado == 'Pendiente' %}
+            {% set color = "orange" %}
+        {% elif pedido.estado == 'En camino' %}
+            {% set color = "blue" %}
+        {% else %}
+            {% set color = "green" %}
+        {% endif %}
+
+        Estado:
+        <strong style="color: {{ color }};">
+            {{ pedido.estado }}
+        </strong>
+
+        {% if pedido.estado == 'Pendiente' %}
+        🔄 <a href="/cambiar_estado/{{ pedido.id }}">Iniciar Entrega</a>
+        {% elif pedido.estado == 'En camino' %}
+        🔄 <a href="/cambiar_estado/{{ pedido.id }}">Marcar Entregado</a>
+        {% else %}
+        🔄 <a href="/cambiar_estado/{{ pedido.id }}">Reiniciar Pedido</a>
+        {% endif %}
+        ❌ <a href="/eliminar/{{ pedido.id }}">Eliminar</a>
+        ✏️ <a href="/editar/{{ pedido.id }}">Editar</a>
+    </li>
+{% endfor %}
     </ul>
 
 </body>

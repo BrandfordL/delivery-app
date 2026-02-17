@@ -84,5 +84,39 @@ def actualizar_pedido(id):
 
     return redirect(url_for("pedidos"))
 
+@app.route("/cambiar_estado/<int:id>")
+def cambiar_estado(id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+
+    # Obtener estado actual
+    cursor.execute("SELECT estado FROM pedidos WHERE id = ?", (id,))
+    pedido = cursor.fetchone()
+
+    if pedido is None:
+        conexion.close()
+        return "Pedido no encontrado"
+
+    estado_actual = pedido["estado"]
+
+    # Lógica de cambio de estado
+    if estado_actual == "Pendiente":
+        nuevo_estado = "En camino"
+    elif estado_actual == "En camino":
+        nuevo_estado = "Entregado"
+    else:
+        nuevo_estado = "Pendiente"
+
+    # Actualizar en base de datos
+    cursor.execute(
+        "UPDATE pedidos SET estado = ? WHERE id = ?",
+        (nuevo_estado, id)
+    )
+
+    conexion.commit()
+    conexion.close()
+
+    return redirect(url_for("pedidos"))
+
 if __name__ == "__main__":
     app.run(debug=True)
