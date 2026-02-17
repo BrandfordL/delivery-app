@@ -1,8 +1,19 @@
-from flask import Flask, render_template, url_for, request, redirect
+from flask import Flask, render_template, url_for, request, redirect, session
 import sqlite3
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = "super_secret_key"
+
+usuarios = [
+    {
+        "username": "domi1",
+        "password": generate_password_hash("1234"),
+        "rol": "domiciliario"
+    },
+]
+
 
 def obtener_conexion():
     conexion = sqlite3.connect("pedidos.db")
@@ -12,6 +23,63 @@ def obtener_conexion():
 @app.route("/")
 def home():
     return render_template("index.html")
+
+@app.route("/registro", methods=["GET", "POST"])
+def registro():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = generate_password_hash(request.form["password"])
+
+        for usuario in usuarios:
+            if usuario["username"] == username:
+                return "El usuario ya existe"
+
+        nuevo_usuario = {
+            "username": username,
+            "password": password,
+            "rol": "cliente"
+        }
+
+        usuarios.append(nuevo_usuario)
+
+        return redirect(url_for("login"))
+
+    return render_template("registro.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        for usuario in usuarios:
+            if usuario["username"] == username and check_password_hash(usuario["password"], password):
+
+                session["usuario"] = usuario["username"]
+                session["rol"] = usuario["rol"]
+
+                return redirect(url_for("dashboard"))
+
+        return "Credenciales incorrectas"
+
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard():
+    if "usuario" not in session:
+        return redirect(url_for("login"))
+
+    if session["rol"] == "cliente":
+        return render_template("dashboard_cliente.html")
+
+    if session["rol"] == "domiciliario":
+        return render_template("dashboard_domiciliario.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/pedidos")
 def pedidos():

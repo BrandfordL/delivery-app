@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Panel Cliente</title>
+</head>
+<body>
+
+    <h2>Bienvenido {{ session['usuario'] }} 👤</h2>
+
+    <p>Este es el panel del cliente.</p>
+
+    <a href="{{ url_for('logout') }}">Cerrar sesión</a>
+
+</body>
+</html>
