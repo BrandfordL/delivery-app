@@ -9,6 +9,7 @@
     <form method="POST" action="/agregar_pedido">
         <input type="text" name="cliente" placeholder="Nombre del cliente" required>
         <input type="text" name="direccion" placeholder="Dirección" required>
+        <input type="text" name="telefono" placeholder="Teléfono" required>
         <button type="submit">Agregar Pedido</button>
     </form>
 
@@ -19,9 +20,12 @@
         <li>
             ID: {{ pedido.id }} |
             Cliente: {{ pedido.cliente }} |
-            Dirección: {{ pedido.direccion }}
-            <a href="/eliminar/{{ pedido.id }}">❌ Eliminar</a>
-            <a href="/editar/{{ pedido.id }}">✏️ Editar</a>
+            Dirección: {{ pedido.direccion }} |
+            Teléfono: {{ pedido.telefono }} |
+            Estado: {{ pedido.estado }} |
+            Fecha: {{ pedido.fecha_creacion }} |
+            ❌ <a href="/eliminar/{{ pedido.id }}">Eliminar</a>
+            ✏️ <a href="/editar/{{ pedido.id }}">Editar</a>
         </li>
     {% endfor %}
     </ul>

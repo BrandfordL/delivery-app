@@ -5,12 +5,15 @@ def crear_base_datos():
     cursor = conexion.cursor()
 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS pedidos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cliente TEXT NOT NULL,
-            direccion TEXT NOT NULL
-        )
-    """)
+    CREATE TABLE IF NOT EXISTS pedidos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente TEXT NOT NULL,
+        direccion TEXT NOT NULL,
+        telefono TEXT NOT NULL,
+        estado TEXT NOT NULL DEFAULT 'Pendiente',
+        fecha_creacion TEXT NOT NULL
+                   )
+                   """)
 
     conexion.commit()
     conexion.close()

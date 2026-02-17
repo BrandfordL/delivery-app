@@ -1,5 +1,6 @@
 from flask import Flask, render_template, url_for, request, redirect
 import sqlite3
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -28,11 +29,20 @@ def pagina_no_encontrada(error):
 def agregar_pedido():
     cliente = request.form["cliente"]
     direccion = request.form["direccion"]
+    telefono = request.form["telefono"]
+
+    if not cliente or not direccion or not telefono:
+        return "Todos los campos son obligatorios"
+
+    fecha_creacion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conexion = obtener_conexion()
     conexion.execute(
-        "INSERT INTO pedidos (cliente, direccion) VALUES (?, ?)",
-        (cliente, direccion)
+        """
+        INSERT INTO pedidos (cliente, direccion, telefono, estado, fecha_creacion)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (cliente, direccion, telefono, "Pendiente", fecha_creacion)
     )
     conexion.commit()
     conexion.close()
