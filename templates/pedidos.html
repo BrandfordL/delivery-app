@@ -7,7 +7,6 @@
     <h1>Lista de Pedidos 🚚</h1>
 
     <form method="POST" action="/agregar_pedido">
-        <input type="text" name="cliente" placeholder="Nombre del cliente" required>
         <input type="text" name="direccion" placeholder="Dirección" required>
         <input type="text" name="telefono" placeholder="Teléfono" required>
         <button type="submit">Agregar Pedido</button>
@@ -19,7 +18,7 @@
         {% for pedido in pedidos %}
     <li>
         ID: {{ pedido.id }} |
-        Cliente: {{ pedido.cliente }} |
+        Cliente: {{ pedido.nombre }} |
         Dirección: {{ pedido.direccion }} |
         Teléfono: {{ pedido.telefono }} |
 

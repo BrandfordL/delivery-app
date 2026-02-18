@@ -6,15 +6,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = "super_secret_key"
 
-usuarios = [
-    {
-        "username": "domi1",
-        "password": generate_password_hash("1234"),
-        "rol": "domiciliario"
-    },
-]
-
-
 def obtener_conexion():
     conexion = sqlite3.connect("pedidos.db")
     conexion.row_factory = sqlite3.Row
@@ -22,25 +13,35 @@ def obtener_conexion():
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    if "usuario_id" in session:
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
 
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
-        username = request.form["username"]
+        nombre = request.form["username"]
         password = generate_password_hash(request.form["password"])
+        rol = "cliente"
 
-        for usuario in usuarios:
-            if usuario["username"] == username:
-                return "El usuario ya existe"
+        conexion = obtener_conexion()
 
-        nuevo_usuario = {
-            "username": username,
-            "password": password,
-            "rol": "cliente"
-        }
+        usuario_existente = conexion.execute(
+            "SELECT * FROM usuarios WHERE nombre = ?",
+            (nombre,)
+        ).fetchone()
 
-        usuarios.append(nuevo_usuario)
+        if usuario_existente:
+            conexion.close()
+            return "El usuario ya existe"
+
+        conexion.execute(
+            "INSERT INTO usuarios (nombre, password, rol) VALUES (?, ?, ?)",
+            (nombre, password, rol)
+        )
+
+        conexion.commit()
+        conexion.close()
 
         return redirect(url_for("login"))
 
@@ -48,33 +49,74 @@ def registro():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    error = None
+
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
 
-        for usuario in usuarios:
-            if usuario["username"] == username and check_password_hash(usuario["password"], password):
+        conexion = obtener_conexion()
+        usuario = conexion.execute(
+            "SELECT * FROM usuarios WHERE nombre = ?",
+            (username,)
+        ).fetchone()
+        conexion.close()
 
-                session["usuario"] = usuario["username"]
-                session["rol"] = usuario["rol"]
+        if usuario and check_password_hash(usuario["password"], password):
+            session["usuario_id"] = usuario["id"]
+            session["usuario"] = usuario["nombre"]
+            session["rol"] = usuario["rol"]
 
-                return redirect(url_for("dashboard"))
+            return redirect(url_for("dashboard"))
 
-        return "Credenciales incorrectas"
+        else:
+            error = "Usuario o contraseña incorrectos"
 
-    return render_template("login.html")
+    return render_template("login.html", error=error)
 
 @app.route("/dashboard")
 def dashboard():
-    if "usuario" not in session:
+    if "usuario_id" not in session:
         return redirect(url_for("login"))
 
     if session["rol"] == "cliente":
-        return render_template("dashboard_cliente.html")
+        return redirect(url_for("dashboard_cliente"))
 
-    if session["rol"] == "domiciliario":
-        return render_template("dashboard_domiciliario.html")
+    elif session["rol"] == "domiciliario":
+        return redirect(url_for("dashboard_domiciliario"))
 
+    else:
+        return "Rol no válido"
+
+@app.route("/dashboard_cliente")
+def dashboard_cliente():
+    if "usuario" not in session or session["rol"] != "cliente":
+        return redirect(url_for("login"))
+
+    conexion = obtener_conexion()
+    pedidos = conexion.execute("""
+        SELECT * FROM pedidos
+        WHERE usuario_id = ?
+        ORDER BY fecha_creacion DESC
+    """, (session["usuario_id"],)).fetchall()
+    conexion.close()
+
+    return render_template("dashboard_cliente.html", pedidos=pedidos)
+
+@app.route("/dashboard_domiciliario")
+def dashboard_domiciliario():
+    if "usuario" not in session or session["rol"] != "domiciliario":
+        return redirect(url_for("login"))
+
+    conexion = obtener_conexion()
+    pedidos = conexion.execute("""
+        SELECT * FROM pedidos
+        WHERE estado = 'Pendiente'
+        ORDER BY fecha_creacion ASC
+    """).fetchall()
+    conexion.close()
+
+    return render_template("dashboard_domiciliario.html", pedidos=pedidos)
 
 @app.route("/logout")
 def logout():
@@ -83,8 +125,27 @@ def logout():
 
 @app.route("/pedidos")
 def pedidos():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
     conexion = obtener_conexion()
-    pedidos = conexion.execute("SELECT * FROM pedidos").fetchall()
+
+    if session["rol"] == "cliente":
+        pedidos = conexion.execute("""
+            SELECT pedidos.*, usuarios.nombre
+            FROM pedidos
+            JOIN usuarios ON pedidos.usuario_id = usuarios.id
+            WHERE pedidos.usuario_id = ?
+        """, (session["usuario_id"],)).fetchall()
+
+    elif session["rol"] == "domiciliario":
+        pedidos = conexion.execute("""
+            SELECT pedidos.*, usuarios.nombre
+            FROM pedidos
+            JOIN usuarios ON pedidos.usuario_id = usuarios.id
+            WHERE estado != 'Entregado'
+        """).fetchall()
+
     conexion.close()
 
     return render_template("pedidos.html", pedidos=pedidos)
@@ -95,11 +156,13 @@ def pagina_no_encontrada(error):
 
 @app.route("/agregar_pedido", methods=["POST"])
 def agregar_pedido():
-    cliente = request.form["cliente"]
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
     direccion = request.form["direccion"]
     telefono = request.form["telefono"]
 
-    if not cliente or not direccion or not telefono:
+    if not direccion or not telefono:
         return "Todos los campos son obligatorios"
 
     fecha_creacion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -107,10 +170,10 @@ def agregar_pedido():
     conexion = obtener_conexion()
     conexion.execute(
         """
-        INSERT INTO pedidos (cliente, direccion, telefono, estado, fecha_creacion)
+        INSERT INTO pedidos (usuario_id, direccion, telefono, estado, fecha_creacion)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (cliente, direccion, telefono, "Pendiente", fecha_creacion)
+        (session["usuario_id"], direccion, telefono, "Pendiente", fecha_creacion)
     )
     conexion.commit()
     conexion.close()
@@ -119,8 +182,16 @@ def agregar_pedido():
 
 @app.route("/eliminar/<int:id>")
 def eliminar_pedido(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
     conexion = obtener_conexion()
-    conexion.execute("DELETE FROM pedidos WHERE id = ?", (id,))
+
+    conexion.execute("""
+        DELETE FROM pedidos
+        WHERE id = ? AND usuario_id = ?
+    """, (id, session["usuario_id"]))
+
     conexion.commit()
     conexion.close()
 
@@ -139,52 +210,50 @@ def editar_pedido(id):
 
 @app.route("/actualizar/<int:id>", methods=["POST"])
 def actualizar_pedido(id):
-    cliente = request.form["cliente"]
     direccion = request.form["direccion"]
+    telefono = request.form["telefono"]
 
     conexion = obtener_conexion()
     conexion.execute(
-        "UPDATE pedidos SET cliente = ?, direccion = ? WHERE id = ?",
-        (cliente, direccion, id)
+        "UPDATE pedidos SET direccion = ?, telefono = ? WHERE id = ?",
+        (direccion, telefono, id)
     )
     conexion.commit()
     conexion.close()
 
     return redirect(url_for("pedidos"))
 
-@app.route("/cambiar_estado/<int:id>")
-def cambiar_estado(id):
+@app.route("/cambiar_estado/<int:pedido_id>")
+def cambiar_estado(pedido_id):
+    if "usuario" not in session or session["rol"] != "domiciliario":
+        return redirect(url_for("login"))
+
     conexion = obtener_conexion()
-    cursor = conexion.cursor()
-
-    # Obtener estado actual
-    cursor.execute("SELECT estado FROM pedidos WHERE id = ?", (id,))
-    pedido = cursor.fetchone()
-
-    if pedido is None:
-        conexion.close()
-        return "Pedido no encontrado"
-
-    estado_actual = pedido["estado"]
-
-    # Lógica de cambio de estado
-    if estado_actual == "Pendiente":
-        nuevo_estado = "En camino"
-    elif estado_actual == "En camino":
-        nuevo_estado = "Entregado"
-    else:
-        nuevo_estado = "Pendiente"
-
-    # Actualizar en base de datos
-    cursor.execute(
-        "UPDATE pedidos SET estado = ? WHERE id = ?",
-        (nuevo_estado, id)
-    )
-
+    conexion.execute("""
+        UPDATE pedidos
+        SET estado = 'En camino'
+        WHERE id = ?
+    """, (pedido_id,))
     conexion.commit()
     conexion.close()
 
-    return redirect(url_for("pedidos"))
+    return redirect(url_for("dashboard_domiciliario"))
+
+@app.route("/entregar_pedido/<int:pedido_id>")
+def entregar_pedido(pedido_id):
+    if "usuario" not in session or session["rol"] != "domiciliario":
+        return redirect(url_for("login"))
+
+    conexion = obtener_conexion()
+    conexion.execute("""
+        UPDATE pedidos
+        SET estado = 'Entregado'
+        WHERE id = ?
+    """, (pedido_id,))
+    conexion.commit()
+    conexion.close()
+
+    return redirect(url_for("dashboard_domiciliario"))
 
 if __name__ == "__main__":
     app.run(debug=True)

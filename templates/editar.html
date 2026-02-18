@@ -7,9 +7,16 @@
 
     <h1>Editar Pedido</h1>
 
-    <form method="POST" action="/actualizar/{{ pedido.id }}">
-        <input type="text" name="cliente" value="{{ pedido.cliente }}" required>
+    <form method="POST" action="{{ url_for('actualizar_pedido', id=pedido.id) }}">
+        
+        <label>Dirección:</label><br>
         <input type="text" name="direccion" value="{{ pedido.direccion }}" required>
+        <br><br>
+
+        <label>Teléfono:</label><br>
+        <input type="text" name="telefono" value="{{ pedido.telefono }}" required>
+        <br><br>
+
         <button type="submit">Actualizar</button>
     </form>
 

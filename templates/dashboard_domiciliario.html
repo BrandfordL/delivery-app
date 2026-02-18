@@ -1,15 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Panel Domiciliario</title>
-</head>
-<body>
+<h2>Bienvenido {{ session['usuario'] }} 🚚</h2>
 
-    <h2>Bienvenido {{ session['usuario'] }} 🛵</h2>
+<hr>
 
-    <p>Este es el panel del domiciliario.</p>
+<h3>📦 Pedidos Pendientes</h3>
 
-    <a href="{{ url_for('logout') }}">Cerrar sesión</a>
+{% if pedidos %}
+    <ul>
+    {% for pedido in pedidos %}
+        <li style="margin-bottom: 10px;">
+            <strong>ID:</strong> {{ pedido.id }} |
+            <strong>Dirección:</strong> {{ pedido.direccion }} |
+            <strong>Teléfono:</strong> {{ pedido.telefono }} |
+            <strong>Estado:</strong> {{ pedido.estado }}
 
-</body>
-</html>
+            {% if pedido.estado == "Pendiente" %}
+                🔄 <a href="{{ url_for('cambiar_estado', pedido_id=pedido.id) }}">
+                    Iniciar Entrega
+                </a>
+            {% elif pedido.estado == "En camino" %}
+                ✅ <a href="{{ url_for('entregar_pedido', pedido_id=pedido.id) }}">
+                    Marcar como Entregado
+                </a>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No hay pedidos pendientes.</p>
+{% endif %}
+
+<br>
+<a href="{{ url_for('logout') }}">Cerrar sesión</a>
